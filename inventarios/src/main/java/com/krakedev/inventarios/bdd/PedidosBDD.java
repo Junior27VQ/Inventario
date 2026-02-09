@@ -73,5 +73,56 @@ public class PedidosBDD {
 			}
 		}
 	}
+	public void actualizar(Pedido pedido) throws KrakeDevException {
+		Connection con=null;
+		PreparedStatement psP;
+		PreparedStatement psD;
+		
+		try {
+			con=ConexionBDD.coneccion();
+			psP=con.prepareStatement("update cabecera_pedido "
+					+ "set estado='R' "
+					+ "where numero=?;");
+			psP.setInt(1, pedido.getNumero());
+			psP.executeUpdate();
+			
+			psD=con.prepareStatement("update detalle_pedido "
+					+ "set cantidad_recibida=?, subtotal=? "
+					+ "where codigo_dp=?;");
+			ArrayList<DetallePedido> detallesPedido=pedido.getDetalles();
+			DetallePedido det;
+			
+			for (int i=0;i<detallesPedido.size();i++) {
+				det=detallesPedido.get(i);
+				
+				BigDecimal pv=det.getProducto().getPrecioVenta();
+				BigDecimal cantidad=new BigDecimal(det.getCantidadRecibida());
+				BigDecimal subtotal=pv.multiply(cantidad);
+				
+				psD.setInt(1, det.getCantidadRecibida());
+				psD.setBigDecimal(2, subtotal);
+				psD.setInt(3, det.getCodigo());
+				psD.addBatch();
+			}
+			psD.executeBatch();
+			
+			
+		} catch (SQLException e) {
+			// ps
+			e.printStackTrace();
+			throw new KrakeDevException("error cedula del cliente no existe. Detalles: "+e.getMessage());
+		} catch (KrakeDevException e) {
+			//parametro con
+			throw e;
+		}finally {
+			if(con!=null) {
+				try {
+					con.close();
+				} catch (SQLException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	}
 }
 	
