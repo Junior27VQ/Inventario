@@ -6,6 +6,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Date;
 
@@ -74,10 +75,13 @@ public class PedidosBDD {
 		}
 	}
 	public void actualizar(Pedido pedido) throws KrakeDevException {
-		Connection con=null;
-		PreparedStatement psP;
-		PreparedStatement psD;
-		
+		Connection con = null;
+		PreparedStatement psP = null;
+		PreparedStatement psD = null;
+		PreparedStatement psH = null;
+		Date fechaActual = new Date();
+		//java.sql.Date fechaSQL = new java.sql.Date(fechaActual.getTime());
+		Timestamp fechaHoraActual=new Timestamp(fechaActual.getTime());
 		try {
 			con=ConexionBDD.coneccion();
 			psP=con.prepareStatement("update cabecera_pedido "
@@ -87,7 +91,7 @@ public class PedidosBDD {
 			psP.executeUpdate();
 			
 			psD=con.prepareStatement("update detalle_pedido "
-					+ "set cantidad_recibida=?, subtotal=? "
+					+ "set cantidad_recibida=?, subtotal=?, producto=? "
 					+ "where codigo_dp=?;");
 			ArrayList<DetallePedido> detallesPedido=pedido.getDetalles();
 			DetallePedido det;
@@ -101,11 +105,21 @@ public class PedidosBDD {
 				
 				psD.setInt(1, det.getCantidadRecibida());
 				psD.setBigDecimal(2, subtotal);
-				psD.setInt(3, det.getCodigo());
+				psD.setInt(3, det.getProducto().getCodigo());
+				psD.setInt(4, det.getCodigo());
 				psD.addBatch();
+				
+				psH=con.prepareStatement("insert into historial_stock(fecha,referencia,producto,cantidad) "
+						+ "values(?,?,?,?);");
+				String referencia="PEDIDO"+pedido.getNumero();
+				psH.setTimestamp(1, fechaHoraActual);
+				psH.setString(2, referencia);
+				psH.setInt(3, det.getProducto().getCodigo());
+				psH.setInt(4, det.getCantidadRecibida());
+				psH.addBatch();
 			}
 			psD.executeBatch();
-			
+			psH.executeBatch();
 			
 		} catch (SQLException e) {
 			// ps
